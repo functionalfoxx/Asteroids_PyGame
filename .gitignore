@@ -13,3 +13,5 @@ wheels/
 id_rsa
 *.pem
 *.key
+*.pem
+*.key
