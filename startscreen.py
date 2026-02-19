@@ -1,19 +1,14 @@
 import pygame
 import random
-from player import Player
 from asteroid import Asteroid
-from asteroidfield import AsteroidField
 from shot import Shot
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT
 from titleart import TITLE_ART
+from fauxplayer import FauxPlayer
 
 class StartScreen:
     def __init__(self):
-        self.faux_player = Player(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
-        self.faux_player.radius = 15
-        self.faux_player.shoot_timer = 0
-        self.faux_player.velocity = pygame.Vector2(0, 0)
-
+        self.faux_player = FauxPlayer(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
         self.behavior_timer = 0
         self.behavior_interval = 2.0
         self.current_behavior = "roam"
@@ -39,7 +34,6 @@ class StartScreen:
         widths = [font.size(line)[0] for line in lines]
         max_width = max(widths)
         surf = pygame.Surface((max_width, len(lines) * font.get_linesize()), pygame.SRCALPHA)
-        surf.fill((0,0,0,0))
         y = 0
         for line in lines:
             text_surf = font.render(line, True, (255,255,255))
@@ -69,15 +63,18 @@ class StartScreen:
             direction = pygame.Vector2(mouse_pos) - self.faux_player.position
             if direction.length() > 0:
                 self.velocity = direction.normalize() * random.uniform(150, 200)
-                self.faux_player.rotation = direction.angle_to(pygame.Vector2(0, 1))
+                self.faux_player.rotation = direction.angle_to(pygame.Vector2(0,1))
         elif choice == "shoot_asteroids":
             self.velocity = pygame.Vector2(0,0)
 
     def _update_faux_player(self, dt, mouse_pos):
-        if self.current_behavior == "toward_mouse" or self.current_behavior == "shoot_asteroids":
+        if self.current_behavior in ["toward_mouse","shoot_asteroids"]:
             direction = pygame.Vector2(mouse_pos) - self.faux_player.position
             if direction.length() > 0:
-                self.faux_player.rotation = direction.angle_to(pygame.Vector2(0,1))
+                target_angle = direction.angle_to(pygame.Vector2(0,1))
+                current_angle = self.faux_player.rotation
+                angle_diff = (target_angle - current_angle + 180) % 360 - 180
+                self.faux_player.rotation += max(-180*dt, min(180*dt, angle_diff))
 
         self.faux_player.position += self.velocity * dt
 
@@ -93,17 +90,19 @@ class StartScreen:
         if self.faux_player.shoot_timer > 0:
             self.faux_player.shoot_timer -= dt
         if self.current_behavior in ["toward_mouse","shoot_asteroids"] and self.faux_player.shoot_timer <= 0:
-            self._faux_shoot(mouse_pos)
+            if random.random() < 0.3:
+                self._faux_shoot(mouse_pos)
+            self.faux_player.shoot_timer = random.uniform(0.5, 1.0)
 
     def _faux_shoot(self, target):
-        self.faux_player.shoot_timer = 0.5
-        new_shot = Shot(self.faux_player.position.x, self.faux_player.position.y)
         direction = pygame.Vector2(target) - self.faux_player.position
         if direction.length() > 0:
-            direction = direction.normalize()
-        new_shot.velocity = direction * 300
-        new_shot.containers = (self.shots,)
-        self.shots.add(new_shot)
+            direction_norm = direction.normalize()
+            self.faux_player.rotation = direction.angle_to(pygame.Vector2(0,1))
+            new_shot = Shot(self.faux_player.position.x, self.faux_player.position.y)
+            new_shot.velocity = direction_norm * 300
+            new_shot.containers = (self.shots,)
+            self.shots.add(new_shot)
 
     def _update_shots(self, dt):
         for shot in list(self.shots):

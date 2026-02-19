@@ -50,7 +50,6 @@ def main():
         dt = clock.tick(60) / 1000
         screen.fill("black")
         log_state()
-
         mouse_pos = pygame.mouse.get_pos()
 
         for event in pygame.event.get():
@@ -70,13 +69,15 @@ def main():
                     player.velocity = pygame.Vector2(0, 0)
                     for a in list(asteroids):
                         a.kill()
+                    start_screen = None
 
             elif game_state == STATE_GAME_OVER and event.type == pygame.MOUSEBUTTONDOWN:
                 restart_button = pygame.Rect(SCREEN_WIDTH//2 - 150, SCREEN_HEIGHT//2 - 25, 300, 50)
                 if restart_button.collidepoint(event.pos):
                     game_state = STATE_START_SCREEN
+                    start_screen = StartScreen()
 
-        if game_state == STATE_START_SCREEN:
+        if game_state == STATE_START_SCREEN and start_screen is not None:
             start_screen.update(dt, mouse_pos)
             start_screen.draw(screen)
 
