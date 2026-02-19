@@ -5,6 +5,7 @@ from player import Player
 from asteroid import Asteroid
 from asteroidfield import AsteroidField
 from shot import Shot
+from startscreen import StartScreen
 
 def draw_button(screen, rect, text, font, color=(255,255,255), bg_color=(0,0,0)):
     pygame.draw.rect(screen, bg_color, rect)
@@ -38,12 +39,12 @@ def main():
     shots = pygame.sprite.Group()
 
     Asteroid.containers = (asteroids, updatable, drawable)
-    AsteroidField.containers = (updatable,)
     Shot.containers = (shots, updatable, drawable)
     Player.containers = (updatable, drawable)
 
     asteroid_field = AsteroidField()
     player = Player(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
+    start_screen = StartScreen()
 
     while True:
         dt = clock.tick(60) / 1000
@@ -52,25 +53,12 @@ def main():
 
         mouse_pos = pygame.mouse.get_pos()
 
-        if game_state == STATE_START_SCREEN:
-            start_button = pygame.Rect(SCREEN_WIDTH//2 - 80, SCREEN_HEIGHT//2 - 25, 160, 50)
-            if start_button.collidepoint(mouse_pos):
-                draw_button(screen, start_button, "START", font, color=(0,0,0), bg_color=(255,255,255))
-            else:
-                draw_button(screen, start_button, "START", font)
-
-        elif game_state == STATE_GAME_OVER:
-            restart_button = pygame.Rect(SCREEN_WIDTH//2 - 150, SCREEN_HEIGHT//2 - 25, 300, 50)
-            if restart_button.collidepoint(mouse_pos):
-                draw_button(screen, restart_button, "GAME OVER", font, color=(0,0,0), bg_color=(255,255,255))
-            else:
-                draw_button(screen, restart_button, "GAME OVER", font)
-
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return
 
             if game_state == STATE_START_SCREEN and event.type == pygame.MOUSEBUTTONDOWN:
+                start_button = pygame.Rect(SCREEN_WIDTH//2 - 80, SCREEN_HEIGHT//2 - 25, 160, 50)
                 if start_button.collidepoint(event.pos):
                     game_state = STATE_PLAYING
                     score = 0
@@ -84,10 +72,21 @@ def main():
                         a.kill()
 
             elif game_state == STATE_GAME_OVER and event.type == pygame.MOUSEBUTTONDOWN:
+                restart_button = pygame.Rect(SCREEN_WIDTH//2 - 150, SCREEN_HEIGHT//2 - 25, 300, 50)
                 if restart_button.collidepoint(event.pos):
                     game_state = STATE_START_SCREEN
 
-        if game_state == STATE_PLAYING:
+        if game_state == STATE_START_SCREEN:
+            start_screen.update(dt, mouse_pos)
+            start_screen.draw(screen)
+
+            start_button = pygame.Rect(SCREEN_WIDTH//2 - 80, SCREEN_HEIGHT//2 - 25, 160, 50)
+            if start_button.collidepoint(mouse_pos):
+                draw_button(screen, start_button, "START", font, color=(0,0,0), bg_color=(255,255,255))
+            else:
+                draw_button(screen, start_button, "START", font)
+
+        elif game_state == STATE_PLAYING:
             if respawn_timer > 0:
                 respawn_timer -= dt
 
@@ -101,6 +100,7 @@ def main():
                 countdown_timer -= dt
             else:
                 updatable.update(dt)
+                asteroid_field.update(dt)
 
             score_y = 10
             line_spacing = 28
@@ -131,7 +131,6 @@ def main():
                     log_event("player_hit")
                     lives -= 1
                     next_extra_life = score + POINTS_FOR_EXTRA_LIFE
-
                     for a in list(asteroids):
                         a.kill()
                     if lives <= 0:
@@ -154,8 +153,16 @@ def main():
                             lives += 1
                             next_extra_life += POINTS_FOR_EXTRA_LIFE
 
+            asteroid_field.draw(screen)
             for drawable_obj in drawable:
                 drawable_obj.draw(screen)
+
+        elif game_state == STATE_GAME_OVER:
+            restart_button = pygame.Rect(SCREEN_WIDTH//2 - 150, SCREEN_HEIGHT//2 - 25, 300, 50)
+            if restart_button.collidepoint(mouse_pos):
+                draw_button(screen, restart_button, "GAME OVER", font, color=(0,0,0), bg_color=(255,255,255))
+            else:
+                draw_button(screen, restart_button, "GAME OVER", font)
 
         pygame.display.flip()
 
