@@ -16,13 +16,11 @@ def draw_button(screen, rect, text, font, color=(255,255,255), bg_color=(0,0,0))
 def main():
     pygame.init()
 
-    # --- Game states ---
     STATE_START_SCREEN = "start_screen"
     STATE_PLAYING = "playing"
     STATE_GAME_OVER = "game_over"
     game_state = STATE_START_SCREEN
 
-    # --- Game variables ---
     score = 0
     lives = 3
     next_extra_life = POINTS_FOR_EXTRA_LIFE
@@ -34,7 +32,6 @@ def main():
     clock = pygame.time.Clock()
     dt = 0
 
-    # --- Sprite groups ---
     updatable = pygame.sprite.Group()
     drawable = pygame.sprite.Group()
     asteroids = pygame.sprite.Group()
@@ -48,7 +45,6 @@ def main():
     asteroid_field = AsteroidField()
     player = Player(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
 
-    # --- Main loop ---
     while True:
         dt = clock.tick(60) / 1000
         screen.fill("black")
@@ -56,7 +52,6 @@ def main():
 
         mouse_pos = pygame.mouse.get_pos()
 
-        # --- Buttons ---
         if game_state == STATE_START_SCREEN:
             start_button = pygame.Rect(SCREEN_WIDTH//2 - 80, SCREEN_HEIGHT//2 - 25, 160, 50)
             if start_button.collidepoint(mouse_pos):
@@ -71,7 +66,6 @@ def main():
             else:
                 draw_button(screen, restart_button, "GAME OVER", font)
 
-        # --- Event handling ---
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return
@@ -79,7 +73,6 @@ def main():
             if game_state == STATE_START_SCREEN and event.type == pygame.MOUSEBUTTONDOWN:
                 if start_button.collidepoint(event.pos):
                     game_state = STATE_PLAYING
-                    # Reset game variables
                     score = 0
                     lives = 3
                     next_extra_life = POINTS_FOR_EXTRA_LIFE
@@ -94,12 +87,10 @@ def main():
                 if restart_button.collidepoint(event.pos):
                     game_state = STATE_START_SCREEN
 
-        # --- Gameplay ---
         if game_state == STATE_PLAYING:
             if respawn_timer > 0:
                 respawn_timer -= dt
 
-            # Countdown freeze
             if countdown_timer > 0:
                 countdown_number = int(countdown_timer) + 1
                 countdown_text = font.render(str(countdown_number), True, (255,255,255))
@@ -111,7 +102,6 @@ def main():
             else:
                 updatable.update(dt)
 
-            # --- Draw UI ---
             score_y = 10
             line_spacing = 28
             score_text = font.render(f"Score: {score}", True, (255,255,255))
@@ -121,7 +111,6 @@ def main():
             extra_text = font.render(f"Points Until Extra Life: {points_left}", True, (255,255,255))
             screen.blit(extra_text, (10, score_y + line_spacing))
 
-            # Lives triangles aligned with score
             triangle_size = 10
             start_x = 10 + triangle_size
             y = SCREEN_HEIGHT - 45
@@ -137,13 +126,12 @@ def main():
                     ],
                 )
 
-            # --- Collisions ---
             for asteroid in asteroids:
                 if respawn_timer <= 0 and asteroid.collides_with(player):
                     log_event("player_hit")
                     lives -= 1
                     next_extra_life = score + POINTS_FOR_EXTRA_LIFE
-                    # Reset asteroids
+
                     for a in list(asteroids):
                         a.kill()
                     if lives <= 0:

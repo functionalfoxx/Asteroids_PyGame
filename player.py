@@ -6,12 +6,14 @@ from constants import (
     PLAYER_TURN_SPEED,
     PLAYER_SPEED,
     PLAYER_SHOOT_SPEED,
-    PLAYER_SHOOT_COOLDOWN_SECONDS
+    PLAYER_SHOOT_COOLDOWN_SECONDS,
+    SCREEN_WIDTH,
+    SCREEN_HEIGHT
 )
 from shot import Shot
 
 class Player(CircleShape):
-    def __init__ (self, x, y):
+    def __init__(self, x, y):
         super().__init__(x, y, PLAYER_RADIUS)
         self.rotation = 0
         self.shoot_timer = 0
@@ -33,7 +35,6 @@ class Player(CircleShape):
         )
 
     def update(self, dt):
-
         keys = pygame.key.get_pressed()
 
         if self.shoot_timer > 0:
@@ -49,6 +50,8 @@ class Player(CircleShape):
             self.move(-dt)
         if keys[pygame.K_SPACE]:
             self.shoot()
+
+        self._wrap_position()
 
     def rotate(self, dt):
         self.rotation += PLAYER_TURN_SPEED * dt
@@ -66,3 +69,14 @@ class Player(CircleShape):
         new_shot = Shot(self.position.x, self.position.y)
         direction = pygame.Vector2(0, 1).rotate(self.rotation)
         new_shot.velocity = direction * PLAYER_SHOOT_SPEED
+
+    def _wrap_position(self):
+        if self.position.x < 0:
+            self.position.x = SCREEN_WIDTH
+        elif self.position.x > SCREEN_WIDTH:
+            self.position.x = 0
+
+        if self.position.y < 0:
+            self.position.y = SCREEN_HEIGHT
+        elif self.position.y > SCREEN_HEIGHT:
+            self.position.y = 0
