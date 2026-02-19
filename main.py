@@ -1,27 +1,31 @@
 import pygame, sys
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT
-from logger import log_state
+from logger import log_state, log_event
 from player import Player
 from asteroid import Asteroid
 from asteroidfield import AsteroidField
-from logger import log_event
 from shot import Shot
+
 
 def main():
     pygame.init()
+
+    # ----- Game state -----
     score = 0
+    lives = 3
+    POINTS_FOR_EXTRA_LIFE = 1000
+    next_extra_life = POINTS_FOR_EXTRA_LIFE
+
+    RESPAWN_INVULN_SECONDS = 1.5
+    respawn_timer = 0
+
     font = pygame.font.SysFont(None, 36)
 
-
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-
-    print("Starting Asteroids with pygame version:", pygame.__version__)
-    print(f"Screen width: {SCREEN_WIDTH}")
-    print(f"Screen height: {SCREEN_HEIGHT}")
-
     clock = pygame.time.Clock()
-    dt = 0   
+    dt = 0
 
+    # ----- Sprite groups -----
     updatable = pygame.sprite.Group()
     drawable = pygame.sprite.Group()
     asteroids = pygame.sprite.Group()
@@ -33,26 +37,40 @@ def main():
     Player.containers = (updatable, drawable)
 
     asteroid_field = AsteroidField()
-
     player = Player(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
 
+    # ----- Main loop -----
     while True:
         log_state()
 
-        screen.fill("black")
+        # --- timing ---
+        dt = clock.tick(60) / 1000
 
-        score_text = font.render(f"Score: {score}", True, (255, 255, 255))
-        screen.blit(score_text, (10, 10))
+        if respawn_timer > 0:
+            respawn_timer -= dt
 
+        # --- update ---
+        updatable.update(dt)
 
-        updatable.update(dt) 
-
+        # --- collisions: player ---
         for asteroid in asteroids:
-            if asteroid.collides_with(player):
+            if respawn_timer <= 0 and asteroid.collides_with(player):
                 log_event("player_hit")
-                print("Game over!")
-                sys.exit()
-        
+                lives -= 1
+                next_extra_life = score + POINTS_FOR_EXTRA_LIFE
+
+                if lives <= 0:
+                    print("Game over!")
+                    sys.exit()
+
+                player.position = pygame.Vector2(
+                    SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2
+                )
+                player.velocity = pygame.Vector2(0, 0)
+                respawn_timer = RESPAWN_INVULN_SECONDS
+                break  # IMPORTANT: only lose one life
+
+        # --- collisions: shots ---
         for asteroid in asteroids:
             for shot in shots:
                 if asteroid.collides_with(shot):
@@ -61,16 +79,59 @@ def main():
                     shot.kill()
                     score += points
 
+                    while score >= next_extra_life:
+                        lives += 1
+                        next_extra_life += POINTS_FOR_EXTRA_LIFE
 
-        for drawable_obj in drawable:
-            drawable_obj.draw(screen)
+        # ----- draw -----
+        screen.fill("black")
 
+        # UI (top-left)
+        points_left = max(next_extra_life - score, 0)
+        score_y = 10
+        line_spacing = 28
+
+        screen.blit(
+            font.render(f"Score: {score}", True, (255, 255, 255)),
+            (10, score_y),
+        )
+
+        screen.blit(
+            font.render(
+                f"Points Until Extra Life: {points_left}",
+                True,
+                (255, 255, 255),
+            ),
+            (10, score_y + line_spacing),
+        )
+
+        triangle_size = 10
+        start_x = 10
+        y = SCREEN_HEIGHT - 45
+        
+        for i in range(lives):
+            x = start_x + i * 25
+            pygame.draw.polygon(
+                screen,
+                (255, 255, 255),
+                [
+                    (x, y - triangle_size),
+                    (x - triangle_size, y + triangle_size),
+                    (x + triangle_size, y + triangle_size),
+                ],
+            )
+
+        # Sprites
+        for obj in drawable:
+            obj.draw(screen)
+
+        # Events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return
 
         pygame.display.flip()
-        dt = clock.tick(60) / 1000
+
 
 if __name__ == "__main__":
     main()
