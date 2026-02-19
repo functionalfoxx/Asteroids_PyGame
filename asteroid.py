@@ -19,12 +19,19 @@ class Asteroid(CircleShape):
     def update(self, dt):
         self.position += self.velocity * dt
 
+    ASTEROID_SCORE = {
+        'small': 10,
+        'medium': 20,
+        'large': 30
+    }
+
     def split(self):
-        self.kill()
-
         if self.radius <= ASTEROID_MIN_RADIUS:
-            return
+            points = self.ASTEROID_SCORE['small']
+            self.kill()
+            return points  # small asteroids still give points
 
+        self.kill()
         log_event("asteroid_split")
         angle = random.uniform(20, 50)
 
@@ -38,3 +45,12 @@ class Asteroid(CircleShape):
 
         a2 = Asteroid(self.position.x, self.position.y, new_radius)
         a2.velocity = vel2 * 1.2
+
+        if self.radius >= ASTEROID_MIN_RADIUS * 3:
+            points = self.ASTEROID_SCORE['large']
+        elif self.radius >= ASTEROID_MIN_RADIUS * 2:
+            points = self.ASTEROID_SCORE['medium']
+        else:
+            points = self.ASTEROID_SCORE['small']
+
+        return points
