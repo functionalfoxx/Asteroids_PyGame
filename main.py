@@ -1,5 +1,5 @@
 import pygame, sys
-from constants import SCREEN_WIDTH, SCREEN_HEIGHT
+from constants import SCREEN_WIDTH, SCREEN_HEIGHT, POINTS_FOR_EXTRA_LIFE, RESPAWN_INVULN_SECONDS, RESPAWN_COUNTDOWN_SECONDS
 from logger import log_state, log_event
 from player import Player
 from asteroid import Asteroid
@@ -10,14 +10,11 @@ from shot import Shot
 def main():
     pygame.init()
 
-    # ----- Game state -----
     score = 0
     lives = 3
-    POINTS_FOR_EXTRA_LIFE = 1000
     next_extra_life = POINTS_FOR_EXTRA_LIFE
-
-    RESPAWN_INVULN_SECONDS = 1.5
     respawn_timer = 0
+    countdown_timer = 0
 
     font = pygame.font.SysFont(None, 36)
 
@@ -25,7 +22,6 @@ def main():
     clock = pygame.time.Clock()
     dt = 0
 
-    # ----- Sprite groups -----
     updatable = pygame.sprite.Group()
     drawable = pygame.sprite.Group()
     asteroids = pygame.sprite.Group()
@@ -39,38 +35,44 @@ def main():
     asteroid_field = AsteroidField()
     player = Player(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
 
-    # ----- Main loop -----
     while True:
         log_state()
 
-        # --- timing ---
         dt = clock.tick(60) / 1000
 
         if respawn_timer > 0:
             respawn_timer -= dt
 
-        # --- update ---
-        updatable.update(dt)
+        if countdown_timer <= 0:
+            updatable.update(dt)
+        else:   
+            countdown_timer -= dt
 
-        # --- collisions: player ---
+
         for asteroid in asteroids:
             if respawn_timer <= 0 and asteroid.collides_with(player):
                 log_event("player_hit")
                 lives -= 1
                 next_extra_life = score + POINTS_FOR_EXTRA_LIFE
 
+                # Reset all asteroids immediately
+                for a in list(asteroids):
+                    a.kill()
+
                 if lives <= 0:
                     print("Game over!")
                     sys.exit()
 
-                player.position = pygame.Vector2(
-                    SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2
-                )
+                # Reset player
+                player.position = pygame.Vector2(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
                 player.velocity = pygame.Vector2(0, 0)
-                respawn_timer = RESPAWN_INVULN_SECONDS
-                break  # IMPORTANT: only lose one life
 
-        # --- collisions: shots ---
+                # Start respawn countdown
+                respawn_timer = RESPAWN_INVULN_SECONDS
+                countdown_timer = RESPAWN_COUNTDOWN_SECONDS
+                break
+
+
         for asteroid in asteroids:
             for shot in shots:
                 if asteroid.collides_with(shot):
@@ -83,10 +85,26 @@ def main():
                         lives += 1
                         next_extra_life += POINTS_FOR_EXTRA_LIFE
 
-        # ----- draw -----
         screen.fill("black")
 
-        # UI (top-left)
+        
+        if countdown_timer > 0:
+            countdown_number = int(countdown_timer) + 1
+
+            countdown_text = font.render(
+                str(countdown_number), True, (255, 255, 255)
+            )
+
+            text_rect = countdown_text.get_rect(
+                center=(
+                    int(player.position.x),
+                    int(player.position.y + player.radius + 40),
+                )
+            )
+
+            screen.blit(countdown_text, text_rect)
+
+
         points_left = max(next_extra_life - score, 0)
         score_y = 10
         line_spacing = 28
@@ -106,8 +124,10 @@ def main():
         )
 
         triangle_size = 10
-        start_x = 10
+        text_left_x = 10
         y = SCREEN_HEIGHT - 45
+
+        start_x = text_left_x + triangle_size
         
         for i in range(lives):
             x = start_x + i * 25
@@ -121,11 +141,9 @@ def main():
                 ],
             )
 
-        # Sprites
         for obj in drawable:
             obj.draw(screen)
 
-        # Events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return
